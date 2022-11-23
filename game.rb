@@ -2,29 +2,30 @@ WIN = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 4, 7], [2, 5, 8], [3, 6, 9], [1, 5, 
 
 # Main Event to handle
 class Game
-  attr_accessor :result
-
-  def initialize
-    @finished = false
-    @result = 'No result yet'
-  end
-
   class << self
     def init
+      result = 'It is a draw!'
       players = Player.players_picks_marker
       board = Board.new
       board.print_board
-      # BUG when player 2 wins not breaking out of loop
-      for i in 0..8 do
-        players[i%2].play_turn(board)
-        board.print_board
-        if players[i%2].win?
-          puts "Player %s wins" %players[i%2].marker
-          # Break out game TODO
-          break
+      alternate_turns = 1
+      while board.somewhere_to_play?
+        if alternate_turns == 1
+          players[0].play_turn(board)
+          if players[0].win?
+            result = '%s Wins' % players[0].marker
+            break
+          end
+        else
+          players[1].play_turn(board)
+          if players[1].win?
+            result = '%s Wins' % players[1].marker
+            break
+          end
         end
+        alternate_turns = -alternate_turns
       end
-      puts "It's a draw"
+      puts result
     end
   end
 end
@@ -46,6 +47,10 @@ class Board
   def somewhere_to_play?
     !(@grid & [1, 2, 3, 4, 5, 6, 7, 8, 9]).empty?
   end
+
+  def available_space
+    (@grid & [1, 2, 3, 4, 5, 6, 7, 8, 9]).count
+  end
 end
 
 # Methods to actuate over the board and play the game
@@ -59,7 +64,6 @@ class Player
   end
 
   def win?
-    puts @plays
     WIN.include?(@plays)
   end
 
@@ -79,13 +83,14 @@ class Player
 
   def play_turn(board)
     # The player can play the turn if has turns left and not winned yet
-    if can_play? && !win?
+    if can_play?
       puts '%s Turn, Where would you like to place your marker?: ' % marker
       until a_valid_play?(board, play = gets.chomp.to_i)
         puts '%s Turn, Please select a valid position: ' % marker
       end
     end
     register_play(board, play, marker)
+    board.print_board
   end
 
   class << self
@@ -105,7 +110,11 @@ class Player
       puts 'P2 marker is %s' % p2_marker
       puts '%s Goes first' % first.marker
       # puts first.turns
-      [p1, p2]
+      if first == p1
+        [p1, p2]
+      else
+        [p2, p1]
+      end
     end
   end
 end

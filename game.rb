@@ -12,11 +12,19 @@ class Game
   class << self
     def init
       players = Player.players_picks_marker
-      # puts players
       board = Board.new
       board.print_board
-      players[0].play_turn(board)
-      board.print_board
+      # BUG when player 2 wins not breaking out of loop
+      for i in 0..8 do
+        players[i%2].play_turn(board)
+        board.print_board
+        if players[i%2].win?
+          puts "Player %s wins" %players[i%2].marker
+          # Break out game TODO
+          break
+        end
+      end
+      puts "It's a draw"
     end
   end
 end
@@ -29,11 +37,14 @@ class Board
     @grid = [1, 2, 3, 4, 5, 6, 7, 8, 9]
   end
 
-  # Improve so it doesn't throw errors when printing "X" or "O"
   def print_board
-    puts ' %d | %d | %d' % @grid[0..2].to_s
-    puts ' %d | %d | %d' % @grid[3..5].to_s
-    puts ' %d | %d | %d' % @grid[6..8].to_s
+    puts ' %s | %s | %s ' % @grid[0..2].map { |e| e.to_s }
+    puts ' %s | %s | %s ' % @grid[3..5].map { |e| e.to_s }
+    puts ' %s | %s | %s ' % @grid[6..8].map { |e| e.to_s }
+  end
+
+  def somewhere_to_play?
+    !(@grid & [1, 2, 3, 4, 5, 6, 7, 8, 9]).empty?
   end
 end
 
@@ -44,11 +55,16 @@ class Player
   def initialize(marker)
     @marker = marker
     @plays = []
-    @turns = 3
+    @turns = 4
+  end
+
+  def win?
+    puts @plays
+    WIN.include?(@plays)
   end
 
   def can_play?
-    turns.positive
+    @turns.positive?
   end
 
   def a_valid_play?(board, play)
@@ -56,20 +72,22 @@ class Player
   end
 
   def register_play(board, play, marker)
-    plays << play
-    self.turns -= 1
+    @plays << play
+    @turns -= 1
     board.grid[play.to_i - 1] = marker
-    puts plays
   end
 
   def play_turn(board)
-    until a_valid_play?(board, play = gets.chomp.to_i)
+    # The player can play the turn if has turns left and not winned yet
+    if can_play? && !win?
       puts '%s Turn, Where would you like to place your marker?: ' % marker
+      until a_valid_play?(board, play = gets.chomp.to_i)
+        puts '%s Turn, Please select a valid position: ' % marker
+      end
     end
     register_play(board, play, marker)
   end
 
-  # Is it possible to move methods as can_play, valid_play and register_play to self?
   class << self
     def players_picks_marker
       puts 'Player pick your marker: X | O'
@@ -86,6 +104,7 @@ class Player
       puts 'P1 marker is %s' % p1_marker
       puts 'P2 marker is %s' % p2_marker
       puts '%s Goes first' % first.marker
+      # puts first.turns
       [p1, p2]
     end
   end
